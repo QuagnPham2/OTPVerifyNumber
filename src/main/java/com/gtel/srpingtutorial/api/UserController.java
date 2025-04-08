@@ -20,15 +20,16 @@ public class UserController {
         return userService.registerUser(registerRequest);
     }
 
-    @PutMapping("/resend-otp/{transactionId}")
+    @GetMapping("/resend-otp/{transactionId}")
     public RegisterResponse resendOtp(@PathVariable("transactionId") String transactionId) {
-        return null;
+        return userService.resendOtp(transactionId);
     }
 
-    // 3. verify otp
+    //3. verify otp
 
+    @PostMapping("/confirm-otp")
     public void confirmRegisterOtp(@RequestBody ConfirmOtpRegisterRequest request){
-        return;
+        userService.confirmRegisterOtp(request);
     }
 
 }

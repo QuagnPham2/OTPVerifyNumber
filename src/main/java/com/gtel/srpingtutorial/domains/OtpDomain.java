@@ -91,7 +91,7 @@ public class OtpDomain {
         return registerUserEntity;
     }
 
-    protected String genOtp(){
+    public String genOtp(){
         int otp = random.nextInt(1000000);
         return formatter.format(otp);
     }

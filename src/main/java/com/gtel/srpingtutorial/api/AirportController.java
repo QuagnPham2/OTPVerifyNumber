@@ -18,7 +18,7 @@ public class AirportController {
     @Autowired
     private AirportService airportService;
 
-   @GetMapping
+    @GetMapping
     public List<AirportResponse> getAirports(@RequestParam(required = false) Map<String, String> params) {
         return airportService.getAirportsNo4(params);
     }

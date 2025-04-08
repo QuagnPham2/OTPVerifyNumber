@@ -190,13 +190,8 @@ public class AirportService extends BaseService {
         try {
             this.createLocation(airportRequest.getLocation());
         }catch (Exception e){
-
+            e.getMessage();
         }
-
-
-
-
-
 
         log.info("createAirport with id  {} SUCCESS " , airportRequest.getIata());
     }
