@@ -71,47 +71,66 @@ public class UserService  extends BaseService{
     public RegisterResponse resendOtp(String transactionId) throws ApplicationException {
         log.info("[resendOtp] - resend with transactionId {}", transactionId);
 
+
+        // Lấy thông tin giao dịch từ Redis
         RegisterUserEntity entity = registerUserRedisRepository.findById(transactionId)
                 .orElseThrow(() -> new ApplicationException(ERROR_CODE.INVALID_REQUEST, "Transaction ID not found"));
 
         long now = System.currentTimeMillis() / 1000;
 
+
+        // Kiểm tra xem có thể gửi lại OTP không (cần chờ thời gian resendOtpTime)
         if (now < entity.getOtpResendTime()) {
             throw new ApplicationException(ERROR_CODE.INVALID_REQUEST, "Please wait 120s");
         }
 
+        // Kiểm tra số lần gửi lại OTP
         if (entity.getOtpResendCount() >= 5) {
             throw new ApplicationException(ERROR_CODE.INVALID_REQUEST, "OTP is only sent 5 times a day");
         }
 
+        // Sinh OTP mới
         entity.setOtp(otpDomain.genOtp());
         entity.setOtpResendTime(now + 60);
         entity.setOtpResendCount(entity.getOtpResendCount() + 1);
 
+
+        // Cập nhật lại thông tin trong Redis
         registerUserRedisRepository.save(entity);
 
         log.info("[resendOtp] - OTP resent successfully for transactionId {}", transactionId);
         log.info("[otp new] - OTP resent {}", entity.getOtp());
 
+
+        // Trả về kết quả response
         return new RegisterResponse(entity);
     }
 
     public void confirmRegisterOtp(ConfirmOtpRegisterRequest request) throws ApplicationException {
         log.info("[confirmRegisterOtp] - Start with transactionId {}", request.getTransactionId());
 
+
+        // Lấy thông tin giao dịch từ Redis bằng transactionId
         RegisterUserEntity entity = registerUserRedisRepository.findById(request.getTransactionId())
                 .orElseThrow(() -> new ApplicationException(ERROR_CODE.INVALID_REQUEST, "Transaction ID not found"));
 
+
+        // Kiểm tra OTP đã hết hạn
         long now = System.currentTimeMillis() / 1000;
 
         if (now > entity.getOtpExpiredTime()) {
             throw new ApplicationException(ERROR_CODE.INVALID_REQUEST, "OTP expired");
         }
 
+
+        // Kiểm tra OTP người dùng nhập có đúng không
         if (!entity.getOtp().equals(request.getOtp())) {
+            // Tăng số lần OTP sai
             entity.setOtpFail(entity.getOtpFail() + 1);
             registerUserRedisRepository.save(entity);
 
+
+            // Kiểm tra số lần sai OTP
             if (entity.getOtpFail() >= 5) {
                 throw new ApplicationException(ERROR_CODE.INVALID_REQUEST, "OTP failed 5 times. Please try again later.");
             }
@@ -119,12 +138,15 @@ public class UserService  extends BaseService{
             throw new ApplicationException(ERROR_CODE.INVALID_REQUEST, "Invalid OTP");
         }
 
+        // Nếu OTP đúng, bạn có thể cập nhật trạng thái người dùng và hoàn thành đăng ký
         UserEntity user = new UserEntity();
         user.setPhoneNumber(entity.getPhoneNumber());
         user.setPassword(entity.getPassword());
         user.setStatus(USER_STATUS.ACTIVE);
 
         userRepository.save(user);
+
+        // Xóa thông tin OTP trong Redis sau khi xác nhận thành công
         registerUserRedisRepository.delete(entity);
 
         log.info("[confirmRegisterOtp] - OTP confirmed successfully for transactionId {}", request.getTransactionId());
